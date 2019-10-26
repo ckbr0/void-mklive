@@ -1,0 +1,44 @@
+#!/bin/sh
+
+ARCH=
+IMAGE=
+
+while getopts "a:b:hr:" opt; do
+case $opt in
+	a) ARCH="$OPTARG";;
+	b) IMAGE="$OPTARG";;
+	h) echo "${0#/*}: [-a arch] [-r repo] [-k keymap] [-l locale]" >&2; exit 1;;
+	r) REPO="-r $OPTARG $REPO";;
+esac
+done
+shift $((OPTIND - 1))
+
+: ${ARCH:=$(uname -m)}
+
+readonly DATE=$(date +%Y%m%d)
+readonly DWM_IMG=void-live-${ARCH}-${DATE}-dwm.iso
+
+readonly GRUB="grub-i386-efi grub-x86_64-efi"
+
+readonly BASE_PKGS="dialog cryptsetup lvm2 mdadm $GRUB"
+readonly X_PKGS="$BASE_PKGS xorg-minimal xorg-input-drivers xorg-video-drivers setxkbmap xauth font-misc-misc terminus-font dejavu-fonts-ttf alsa-plugins-pulseaudio intel-ucode xorg-fonts libX11-devel libXft-devel fontconfig-devel libXinerama-devel xinit font-inconsolata-otf font-libertine-otf font-awesome xinit arandr noto-fonts-emoji font-symbola xclip xdotool xdpyinfo xsetroot xset"
+readonly DWM_PKGS= "$X_PKGS pam xss-lock xsecurelock compton dmenu feh pywal tabbed xtools lf calcurse libnotify dbus dunst sxiv neovim mpd mpc mpv ncmpcpp newsboat sc-im htop unrar unzip p7zip youtube-dl zathura zathura-djvu zathura-pdf-mupdf poppler mediainfo mediainfo atool fzf simple-mtpfs bash-completion zsh zsh-syntax-highlighting neomutt transmission scrot qrencode pamixer pulsemixer firefox steam lutris gnuplot base-devel clang tcc python python3 python3-pip ninja gromit-mpx wxMaxima octave"
+
+
+[ ! -x mklive.sh ] && exit 0
+
+if [ ! -e $DWM_IMG ]; then
+	readonly TMPDIR=$(mktemp --tmpdir="$(pwd -P)" -d)
+	readonly ROOTFS=$TMP/rootfs
+
+	git https://github.com/ckbr0/dwm.git $TMPDIR/dwm
+	make -C $TMPDIR/dwm install $DESTDIR=$ROOTFS
+	git https://github.com/ckbr0/st.git $TMPDIR/st
+	make -C $TMPDIR/st install $DESTDIR=$ROOTFS
+	
+	mkdir -p $ROOTFS/home/anon
+
+	
+
+	./mklive.sh -a $ARCH -o $DWM_IMG -p "$DWM_PKGS" ${REPO} $@
+fi
